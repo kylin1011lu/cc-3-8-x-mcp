@@ -95,15 +95,38 @@ function parsePrefab(filePath) {
   }
 
   // ─── findNodeByName ───────────────────────────────────────
-  // 从根节点递归 DFS，返回第一个 _name 匹配的 cc.Node
+  // 从根节点递归 DFS，返回第一个名称匹配的 cc.Node
+  // 同时检查 _name 和 stub override 名（stub 的 _name 为 undefined，
+  // 真实名在 PrefabInstance.propertyOverrides 的 _name 条目）
   function findNodeByName(name) {
     const root = getRoot();
     if (!root) return null;
     return _findByName(root, name, new Set([rootId]));
   }
 
+  function _getEffectiveName(node) {
+    if (node._name !== undefined) return node._name;
+    const prefabRef = node._prefab;
+    if (!prefabRef || typeof prefabRef.__id__ !== 'number') return undefined;
+    const pi = idIndex[prefabRef.__id__];
+    if (!pi || pi.__type__ !== 'cc.PrefabInfo') return undefined;
+    const instRef = pi.instance;
+    if (!instRef || typeof instRef.__id__ !== 'number') return undefined;
+    const inst = idIndex[instRef.__id__];
+    if (!inst || inst.__type__ !== 'cc.PrefabInstance') return undefined;
+    if (!Array.isArray(inst.propertyOverrides)) return undefined;
+    for (const ovRef of inst.propertyOverrides) {
+      if (typeof ovRef.__id__ !== 'number') continue;
+      const ov = idIndex[ovRef.__id__];
+      if (!ov || ov.__type__ !== 'CCPropertyOverrideInfo') continue;
+      if (!Array.isArray(ov.propertyPath) || ov.propertyPath.length !== 1 || ov.propertyPath[0] !== '_name') continue;
+      return ov.value;
+    }
+    return undefined;
+  }
+
   function _findByName(node, name, visited) {
-    if (node._name === name) return node;
+    if (_getEffectiveName(node) === name) return node;
     if (!Array.isArray(node._children)) return null;
     for (const childRef of node._children) {
       if (typeof childRef.__id__ !== 'number') continue;

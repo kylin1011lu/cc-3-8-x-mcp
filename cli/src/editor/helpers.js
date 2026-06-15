@@ -76,6 +76,32 @@ function isStub(elements, node) {
   return !!(instance && instance.__type__ === 'cc.PrefabInstance');
 }
 
+// ─── 获取 stub 节点的 override 显示名 ───────────────────────
+// stub 节点的 _name 通常为 undefined，真实显示名存在
+// PrefabInstance.propertyOverrides 中 propertyPath: ["_name"] 条目
+
+function getStubOverrideName(elements, node) {
+  if (!node || node.__type__ !== 'cc.Node') return null;
+  const prefabRef = node._prefab;
+  if (!prefabRef || typeof prefabRef.__id__ !== 'number') return null;
+  const prefabInfo = elements[prefabRef.__id__];
+  if (!prefabInfo || prefabInfo.__type__ !== 'cc.PrefabInfo') return null;
+  const instanceRef = prefabInfo.instance;
+  if (!instanceRef || typeof instanceRef.__id__ !== 'number') return null;
+  const instance = elements[instanceRef.__id__];
+  if (!instance || instance.__type__ !== 'cc.PrefabInstance') return null;
+
+  if (!Array.isArray(instance.propertyOverrides)) return null;
+  for (const ovRef of instance.propertyOverrides) {
+    if (typeof ovRef.__id__ !== 'number') continue;
+    const ov = elements[ovRef.__id__];
+    if (!ov || ov.__type__ !== 'CCPropertyOverrideInfo') continue;
+    if (!Array.isArray(ov.propertyPath) || ov.propertyPath.length !== 1 || ov.propertyPath[0] !== '_name') continue;
+    return ov.value;
+  }
+  return null;
+}
+
 // ─── 引用相等查 __id__ ───────────────────────────────────────
 
 function indexOfNode(elements, node) {
@@ -123,8 +149,7 @@ function resolveNode(prefabData, nodeSelector, opDesc) {
 
 // 按路径定位节点（DOM-like）
 //   path 形如 "Canvas/Main/itemList"，从根节点开始按 _name 逐级下钻
-//   每段必须命中 _children 中某个节点的 _name
-//   遇到 stub 节点时不下钻（stub _name 在 propertyOverrides 里，超出 cli 范围）
+//   每段必须命中 _children 中某个节点的 _name 或 stub override 名
 function resolveNodeByPath(prefabData, pathStr, opDesc) {
   const { elements, rootId, getRoot } = prefabData;
   const segments = pathStr.split('/').filter((s) => s.length > 0);
@@ -147,8 +172,14 @@ function resolveNodeByPath(prefabData, pathStr, opDesc) {
     for (const cref of cur._children) {
       if (typeof cref.__id__ !== 'number') continue;
       const child = elements[cref.__id__];
-      if (child && child._name === seg) {
+      if (!child) continue;
+      if (child._name === seg) {
         matches.push(cref.__id__);
+      } else {
+        const overrideName = getStubOverrideName(elements, child);
+        if (overrideName === seg) {
+          matches.push(cref.__id__);
+        }
       }
     }
     if (matches.length === 0) {
@@ -199,6 +230,7 @@ function findRootPrefabInfo(elements, rootNodeId) {
 module.exports = {
   normalizeComponentType,
   isStub,
+  getStubOverrideName,
   indexOfNode,
   resolveNode,
   findComponent,
