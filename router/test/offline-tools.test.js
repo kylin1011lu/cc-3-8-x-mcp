@@ -26,14 +26,12 @@ const {
 } = require('../src/offline-tools.js');
 
 // fixture: HomeUI.prefab（只读，在 cli/test/fixtures/）
-const FIXTURE_PATH = path.resolve(
-    __dirname,
-    '../../cli/test/fixtures/HomeUI.prefab'
-);
+const fixture = require('../../cli/test/fixture.js');
+const FIXTURE_PATH = fixture.ensureHomeUiFixture();
 
 // 复制 fixture 到 tmp 用于写操作
 function makeTmp(tag) {
-    var dst = path.join(os.tmpdir(), 'HomeUI-router-' + tag + '-' + Date.now() + '.prefab');
+    var dst = path.join(fixture.FIXTURE_TEMP_DIR, 'HomeUI-router-' + tag + '-' + process.pid + '-' + Date.now() + '.prefab');
     fs.copyFileSync(FIXTURE_PATH, dst);
     return dst;
 }
@@ -52,7 +50,7 @@ test('isOfflineTool 对已知 name 返回 true，未知 name 返回 false', () =
     assert.equal(isOfflineTool('prefab_query'), true);
     assert.equal(isOfflineTool('prefab_edit'), true);
     assert.equal(isOfflineTool('prefab_batch'), true);
-    assert.equal(isOfflineTool('router_list_editors'), false);
+    assert.equal(isOfflineTool('gateway_list_editors'), false);
     assert.equal(isOfflineTool('scene_set_property'), false);
     assert.equal(isOfflineTool(''), false);
 });

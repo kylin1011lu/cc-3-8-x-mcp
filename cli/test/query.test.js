@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const { queryPrefab } = require('../src/query/index.js');
 
-const FIXTURE = path.join(__dirname, 'fixtures', 'HomeUI.prefab');
+const FIXTURE = require('./fixture.js').ensureHomeUiFixture();
 
 // ─── selector: tree ─────────────────────────────────────────
 

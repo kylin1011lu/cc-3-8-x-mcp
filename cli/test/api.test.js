@@ -18,16 +18,16 @@ const { editPrefab } = require('../src/editor/index.js');
 const { parsePrefab } = require('../src/parse.js');
 const { listOverrides } = require('../src/overrides.js');
 const { addRootTargetOverride, resolveLocalIdChain } = require('../src/editor/nested.js');
-
-const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/HomeUI.prefab');
+const fixture = require('./fixture.js');
+const FIXTURE_PATH = fixture.ensureHomeUiFixture();
 
 // 项目根（含 assets/ + package.json），传给 editPrefab options.projectRoot
 // 让 UuidResolver 在 /tmp/ 临时文件场景下也能定位 assets/ 目录
-const PROJECT_ROOT = path.resolve(__dirname, '../../../../');
+const PROJECT_ROOT = fixture.FIXTURE_PROJECT_ROOT;
 
 // 每个测试独立 tmp 文件
 function makeTmp(tag) {
-  return path.join(os.tmpdir(), `HomeUI-api-${tag}-${Date.now()}.prefab`);
+  return path.join(fixture.FIXTURE_TEMP_DIR, `HomeUI-api-${tag}-${process.pid}-${Date.now()}.prefab`);
 }
 
 // 把 fixture 复制到 tmp，返回 tmp 路径（让 editPrefab 可以写回）
@@ -1236,7 +1236,8 @@ test('add-component: 普通节点挂自定义 ccclass 追加组件 + CompPrefabI
   assert.ok(typeof newCompRef.__id__ === 'number');
 
   const comp = after.elements[newCompRef.__id__];
-  assert.equal(comp.__type__, 'TaskBtn');
+  const { compressUuid } = require('../src/id.js');
+  assert.equal(comp.__type__, compressUuid(fixture.TASK_BTN_UUID));
   assert.equal(comp.node.__id__, after.elements.findIndex((e) => e === node));
   assert.equal(comp._enabled, true);
   assert.ok(comp.__prefab && typeof comp.__prefab.__id__ === 'number');
@@ -1358,7 +1359,8 @@ test('remove-component: 普通节点移除组件引用 + 保持其他 __id__ 稳
 
   // 组件元素本身作为 orphan 保留：elements 长度不变、原槽位仍是 TaskBtn
   assert.equal(after.elements.length, beforeElementsLen);
-  assert.equal(after.elements[beforeCompId].__type__, 'TaskBtn');
+  const { compressUuid } = require('../src/id.js');
+  assert.equal(after.elements[beforeCompId].__type__, compressUuid(fixture.TASK_BTN_UUID));
 });
 
 test('remove-component: 节点上找不到对应组件抛错，不落盘', () => {
@@ -1674,4 +1676,3 @@ test('FIX-2 addRootTargetOverride: 数组 propertyPath 各索引独立不被幂�
   assert.ok(paths.includes(JSON.stringify(['_items', 1])), '应含 ["_items", 1]');
   assert.ok(paths.includes(JSON.stringify(['_items', 2])), '应含 ["_items", 2]');
 });
-

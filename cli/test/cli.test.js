@@ -19,7 +19,8 @@ const path = require('path');
 const os = require('os');
 
 const BIN = path.resolve(__dirname, '../bin/cocos-mcp-cli.js');
-const FIXTURE = path.resolve(__dirname, 'fixtures/HomeUI.prefab');
+const fixture = require('./fixture.js');
+const FIXTURE = fixture.ensureHomeUiFixture();
 
 function run(args) {
   return spawnSync(process.execPath, [BIN, ...args], {
@@ -29,7 +30,7 @@ function run(args) {
 }
 
 function tmpCopy() {
-  const dest = path.join(os.tmpdir(), `HomeUI-cli-test-${Date.now()}.prefab`);
+  const dest = path.join(fixture.FIXTURE_TEMP_DIR, `HomeUI-cli-test-${process.pid}-${Date.now()}.prefab`);
   fs.copyFileSync(FIXTURE, dest);
   return dest;
 }
