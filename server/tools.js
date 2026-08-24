@@ -85,7 +85,7 @@ function defineTools(ctx) {
         },
         {
             name: 'scene_execute_component_method',
-            description: '调用指定节点组件上的方法',
+            description: '调用指定节点组件上的方法。组件方法内不得再次同步请求同一 Scene 通道；调用扩展 scene.js 方法请直接使用 scene_execute_script。',
             inputSchema: {
                 type: 'object',
                 properties: {
@@ -99,6 +99,26 @@ function defineTools(ctx) {
                 return await msg('scene', 'execute-component-method', {
                     uuid: args.uuid,
                     name: args.name,
+                    args: args.args || [],
+                });
+            },
+        },
+        {
+            name: 'scene_execute_script',
+            description: '直接调用编辑器扩展的 Scene 脚本方法。用于需要 execute-scene-script 的扩展能力，避免组件方法内再次请求同一 Scene 通道造成重入等待。',
+            inputSchema: {
+                type: 'object',
+                properties: {
+                    extension: { type: 'string', description: '扩展 package.json 的 name' },
+                    method: { type: 'string', description: '扩展 scene.js 导出的 methods 方法名' },
+                    args: { type: 'array', items: {}, description: '传给 Scene 脚本方法的参数列表' },
+                },
+                required: ['extension', 'method'],
+            },
+            handler: async function (args) {
+                return await msg('scene', 'execute-scene-script', {
+                    name: args.extension,
+                    method: args.method,
                     args: args.args || [],
                 });
             },

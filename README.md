@@ -155,8 +155,11 @@ prefab_query                   →  Gateway 本地执行（cli），无需编辑
 | `scene_save_scene` | 保存当前场景 |
 | `scene_soft_reload` | 软重载场景，不清编辑器状态 |
 | `scene_execute_component_method` | 调用指定节点的组件方法 |
+| `scene_execute_script` | 直接调用扩展 Scene 脚本方法，避免组件内同 Scene 重入等待 |
 
 > 修改 prefab 资源文件属性建议用 `prefab_edit`（offline），`scene_set_property` 只适用于运行时节点或需要编辑器上下文的情况。
+>
+> Cocos 的 Scene 消息处理不是可重入队列。组件方法内不要再次同步请求 `scene.execute-scene-script`；需要调用扩展 `scene.js` 的 `methods` 时直接使用 `scene_execute_script`。
 
 ### asset-db 域（需编辑器运行）
 

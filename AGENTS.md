@@ -128,7 +128,7 @@ offline CLI 直接写磁盘，Cocos 编辑器不会自动感知。改完 `.prefa
 | 查 AssetDB 资源信息 | `asset_query_assets` / `asset_query_info` |
 | 重导资源 | `asset_reimport` |
 | 查场景运行态节点 | `scene_query_node_tree` / `scene_query_node` |
-| 调组件方法或改运行态属性 | `scene_execute_component_method` / `scene_set_property` |
+| 调组件方法、扩展 Scene 脚本或改运行态属性 | `scene_execute_component_method` / `scene_execute_script` / `scene_set_property` |
 | 拿预览 URL | `preview_query_url` |
 | 刷新预览 | `preview_refresh_and_reload` |
 
