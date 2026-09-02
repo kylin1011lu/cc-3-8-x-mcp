@@ -52,7 +52,10 @@ Supported ops:
   bulk-set                                  # 按 selector（byComponent/byNamePrefix/byNameRegex）一次改一批
   add-node / remove-node / clone-node
   add-spine-socket                        # 给 sp.Skeleton 增加/更新 socket 绑定
-  add-component / set-component-ref         # componentType 支持 @ccclass 名或压缩 classId
+  add-component / remove-component / replace-component / set-component-ref
+                                             # replace-component 原位替换并保留引用；replacementType 缺省时同类型重建
+                                             # refreshFileId=true 可模拟删旧再挂新（需重核外层 nested override）
+                                             # componentType 支持 @ccclass 名或压缩 classId
                                              # set-component-ref 的 refSubNode 可用字符串数组走多层嵌套 stub
   set-nested-component-field                # 仅 stub 节点（嵌套 prefab）改组件字段
   dedupe-component                          # 合并同节点重复组件

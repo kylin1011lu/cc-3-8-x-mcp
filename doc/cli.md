@@ -382,6 +382,7 @@ stub 节点（嵌套 prefab 实例）在 prefab JSON 里 `_name = ""`（空字�
 |---|---|---|
 | `add-component` | `node`, `componentType`, `props?` | 在 `_components` 新挂一个组件 + 配套 CompPrefabInfo。`componentType` 支持 @ccclass 名（`"GMUI"`）、压缩 classId（`"a57b6RRA21B5I70mCpu1pBP"`）、引擎类（`"cc.Button"`） |
 | `remove-component` | `node`, `componentType` | 从普通节点 `_components` 移除指定组件引用。组件元素与其 CompPrefabInfo 作为 orphan 保留在数组里，保持其他 `__id__` 稳定（与 `remove-node` 同策略）。**不支持 stub**——嵌套 prefab 的组件归子 prefab 拥有，外层只能用 `set-component-enabled` 禁用 |
+| `replace-component` | `node`, `componentType`, `replacementType?`, `preserveProperties?`, `props?`, `refreshFileId?` | 在原组件的同一个 `__id__` 槽位平替。默认同类型重建并保留全部业务字段、组件顺序、引用和 CompPrefabInfo/fileId；`replacementType` 可换成其他组件类型，`preserveProperties` 可为 boolean 或字段名数组，`props` 最后覆盖。`refreshFileId=true` 会生成新的 CompPrefabInfo/fileId 来模拟“删旧再挂新”，同 prefab 内 `__id__` 关系仍保持，但外层 nested prefab 若按旧 localID override 需重核 |
 | `set-component-ref` | `node`, `componentType`, `property`, `refNode`, `refType?`, `refSubNode?` | 给脚本组件 `@property` 挂节点 / 组件引用。详见 §6.7 |
 | `dedupe-component` | `node?` | 合并同节点上同语义但重复挂载的组件条目（cli 写 className + 编辑器 reimport 写压缩 classId 形成两份的场景）。按规范化 classId 分组，留字段非空数最多的为 keeper，losers 字段并入后删除并重映射 `__id__`。`node` 缺省扫整 prefab |
 
@@ -418,7 +419,7 @@ stub 节点（嵌套 prefab 实例）在 prefab JSON 里 `_name = ""`（空字�
 | 改节点 _color | `set-node-color` |
 | 给脚本 @property 挂引用（节点 / 组件 / 单层 stub / 内部路径 / 多层 stub） | `set-component-ref`（内部普通路径如 `refSubNode: ["content","title"]`；多层 stub 链仍用 `["A","B"]`） |
 | 加 / 删 / 复制节点 | `add-node` / `remove-node` / `clone-node` |
-| 加 / 删组件 | `add-component` / `remove-component` |
+| 加 / 删 / 平替组件 | `add-component` / `remove-component` / `replace-component` |
 | 合并重复组件 | `dedupe-component` |
 | 跨多 prefab 跑同一组 ops | `batch --glob` |
 | 比较两个 prefab | `diff` 子命令 |

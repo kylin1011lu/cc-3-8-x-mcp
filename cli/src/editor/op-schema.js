@@ -26,6 +26,9 @@ const T = {
   source: 'node-selector',
   refNode: 'node-selector',
   componentType: 'string',
+  replacementType: 'string',
+  preserveProperties: 'any',
+  refreshFileId: 'boolean',
   property: 'string|array',
   refType: 'string',
   refSubNode: 'any', // string | string[]
@@ -116,6 +119,7 @@ const SCHEMAS = {
   'clone-node':              { required: ['source', 'parent', 'name'],             optional: [] },
   'add-component':           { required: ['node', 'componentType'],                optional: ['props'] },
   'remove-component':        { required: ['node', 'componentType'],                optional: [] },
+  'replace-component':       { required: ['node', 'componentType'],                optional: ['replacementType', 'preserveProperties', 'props', 'refreshFileId'] },
   'set-component-ref':       { required: ['node', 'componentType', 'property', 'refNode'], optional: ['refType', 'refSubNode'] },
   'set-nested-component-field': { required: ['node', 'componentType', 'property', 'value'], optional: ['subNode'] },
   // bulk-set 的 target 是 "node" 或 "component:<type>" 字符串模式，不是 selector

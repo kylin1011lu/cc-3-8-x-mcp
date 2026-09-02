@@ -64,6 +64,14 @@ test('每个 offline tool description 包含 "[offline]" 标注', () => {
     }
 });
 
+test('prefab_edit description 暴露删除与平替组件能力', () => {
+    var editTool = OFFLINE_TOOLS.find(function (t) { return t.name === 'prefab_edit'; });
+    assert.ok(editTool);
+    assert.match(editTool.description, /remove-component/);
+    assert.match(editTool.description, /replace-component/);
+    assert.match(editTool.description, /refreshFileId/);
+});
+
 // ── requireAbsolutePath ────────────────────────────────────────
 
 test('requireAbsolutePath 相对路径抛错', () => {
@@ -145,6 +153,40 @@ test('prefab_edit set-active 成功，返回 changed=true + opsApplied=1', async
         assert.equal(data.changed, true, 'changed 应为 true');
         assert.equal(data.opsApplied, 1, 'opsApplied 应为 1');
         assert.ok(Array.isArray(data.nodesAffected), 'nodesAffected 应是数组');
+    } finally {
+        try { fs.unlinkSync(tmp); } catch (_) {}
+    }
+});
+
+test('prefab_edit 可删除并平替普通节点组件', async () => {
+    var tmp = makeTmp('component-ops');
+    try {
+        var result = await handleOfflineToolCall('prefab_edit', {
+            filePath: tmp,
+            ops: [
+                { op: 'add-component', node: 'btnMerge', componentType: 'cc.Animation' },
+                {
+                    op: 'replace-component',
+                    node: 'btnMerge',
+                    componentType: 'cc.Animation',
+                    replacementType: 'cc.Button',
+                    preserveProperties: false,
+                },
+                { op: 'remove-component', node: 'btnMerge', componentType: 'cc.Button' },
+            ],
+        });
+
+        var data = JSON.parse(result.content[0].text);
+        assert.equal(data.opsApplied, 3);
+
+        var cli = require('../../cli/src/index.js');
+        var parsed = cli.parsePrefab(tmp);
+        var node = parsed.findNodeByName('btnMerge');
+        var types = node._components.map(function (ref) {
+            return parsed.elements[ref.__id__].__type__;
+        });
+        assert.equal(types.includes('cc.Animation'), false);
+        assert.equal(types.includes('cc.Button'), false);
     } finally {
         try { fs.unlinkSync(tmp); } catch (_) {}
     }

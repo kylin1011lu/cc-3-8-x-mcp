@@ -1390,6 +1390,216 @@ test('remove-component: schema 校验缺 componentType 抛错', () => {
   );
 });
 
+// ─── replace-component ──────────────────────────────────────
+
+test('replace-component: 同类型原位重建，保留字段、引用、顺序和 fileId', () => {
+  const tmp = cloneFixture('replacecomp-same-type');
+  tmpFiles.push(tmp);
+
+  editPrefab(tmp, [
+    {
+      op: 'add-component',
+      node: 'btnMerge',
+      componentType: 'TaskBtn',
+      props: { _count: 1, _keepNull: null },
+    },
+    { op: 'add-component', node: 'HomeUI', componentType: 'cc.Button' },
+    {
+      op: 'set-component-ref',
+      node: 'HomeUI',
+      componentType: 'cc.Button',
+      property: '_targetGrid',
+      refNode: 'btnMerge',
+      refType: 'TaskBtn',
+    },
+  ]);
+
+  const before = parsePrefab(tmp);
+  const beforeNode = before.findNodeByName('btnMerge');
+  const beforeNodeId = before.elements.findIndex((item) => item === beforeNode);
+  const beforeComponentIds = beforeNode._components.map((item) => item.__id__);
+  const taskCompId = beforeComponentIds[beforeComponentIds.length - 1];
+  const beforeTask = before.elements[taskCompId];
+  const beforeCompPrefabId = beforeTask.__prefab.__id__;
+  const beforeFileId = before.elements[beforeCompPrefabId].fileId;
+  const beforeHome = before.findNodeByName('HomeUI');
+  const beforeButton = before.elements[beforeHome._components[0].__id__];
+  assert.equal(beforeButton._targetGrid.__id__, taskCompId);
+
+  const result = editPrefab(tmp, [
+    {
+      op: 'replace-component',
+      node: 'btnMerge',
+      componentType: 'TaskBtn',
+      props: { _count: 9 },
+    },
+  ]);
+  assert.equal(result.opsApplied, 1);
+
+  const after = parsePrefab(tmp);
+  const afterNode = after.findNodeByName('btnMerge');
+  assert.deepEqual(
+    afterNode._components.map((item) => item.__id__),
+    beforeComponentIds,
+    '组件顺序和组件 __id__ 应保持不变'
+  );
+
+  const afterTask = after.elements[taskCompId];
+  assert.equal(afterTask.node.__id__, beforeNodeId);
+  assert.equal(afterTask._count, 9, 'props 应覆盖保留值');
+  assert.equal(afterTask._keepNull, null, '未覆盖字段应保留');
+  assert.equal(afterTask.__prefab.__id__, beforeCompPrefabId);
+  assert.equal(after.elements[beforeCompPrefabId].fileId, beforeFileId);
+
+  const afterHome = after.findNodeByName('HomeUI');
+  const afterButton = after.elements[afterHome._components[0].__id__];
+  assert.equal(
+    afterButton._targetGrid.__id__,
+    taskCompId,
+    '其他组件指向被替换组件的关系应保持'
+  );
+});
+
+test('replace-component: 可换目标类型并只保留指定字段', () => {
+  const tmp = cloneFixture('replacecomp-change-type');
+  tmpFiles.push(tmp);
+
+  editPrefab(tmp, [
+    {
+      op: 'add-component',
+      node: 'btnMerge',
+      componentType: 'TaskBtn',
+      props: { _keep: 11, _drop: 22 },
+    },
+  ]);
+
+  const before = parsePrefab(tmp);
+  const node = before.findNodeByName('btnMerge');
+  const compId = node._components[node._components.length - 1].__id__;
+
+  editPrefab(tmp, [
+    {
+      op: 'replace-component',
+      node: 'btnMerge',
+      componentType: 'TaskBtn',
+      replacementType: 'cc.Animation',
+      preserveProperties: ['_keep'],
+      props: { _extra: 33 },
+    },
+  ]);
+
+  const after = parsePrefab(tmp);
+  const comp = after.elements[compId];
+  assert.equal(comp.__type__, 'cc.Animation');
+  assert.equal(comp._keep, 11);
+  assert.equal(comp._extra, 33);
+  assert.equal(Object.prototype.hasOwnProperty.call(comp, '_drop'), false);
+});
+
+test('replace-component: refreshFileId 生成新身份但保持同 prefab 内组件引用', () => {
+  const tmp = cloneFixture('replacecomp-refresh-fileid');
+  tmpFiles.push(tmp);
+
+  editPrefab(tmp, [
+    { op: 'add-component', node: 'btnMerge', componentType: 'TaskBtn' },
+    { op: 'add-component', node: 'HomeUI', componentType: 'cc.Button' },
+    {
+      op: 'set-component-ref',
+      node: 'HomeUI',
+      componentType: 'cc.Button',
+      property: '_targetGrid',
+      refNode: 'btnMerge',
+      refType: 'TaskBtn',
+    },
+  ]);
+
+  const before = parsePrefab(tmp);
+  const beforeLen = before.elements.length;
+  const beforeNode = before.findNodeByName('btnMerge');
+  const taskCompId = beforeNode._components[beforeNode._components.length - 1].__id__;
+  const oldCpiId = before.elements[taskCompId].__prefab.__id__;
+  const oldFileId = before.elements[oldCpiId].fileId;
+
+  editPrefab(tmp, [
+    {
+      op: 'replace-component',
+      node: 'btnMerge',
+      componentType: 'TaskBtn',
+      refreshFileId: true,
+    },
+  ]);
+
+  const after = parsePrefab(tmp);
+  const afterTask = after.elements[taskCompId];
+  const newCpiId = afterTask.__prefab.__id__;
+  assert.equal(after.elements.length, beforeLen + 1);
+  assert.notEqual(newCpiId, oldCpiId);
+  assert.notEqual(after.elements[newCpiId].fileId, oldFileId);
+  assert.equal(after.elements[oldCpiId].fileId, oldFileId, '旧 CompPrefabInfo 作为 orphan 保留');
+
+  const afterHome = after.findNodeByName('HomeUI');
+  const afterButton = after.elements[afterHome._components[0].__id__];
+  assert.equal(afterButton._targetGrid.__id__, taskCompId);
+});
+
+test('replace-component: 找不到或重复组件时拒绝修改', () => {
+  const tmp = cloneFixture('replacecomp-invalid-target');
+  tmpFiles.push(tmp);
+
+  const original = fs.readFileSync(tmp, 'utf8');
+  assert.throws(
+    () => editPrefab(tmp, [
+      { op: 'replace-component', node: 'btnMerge', componentType: 'cc.Animation' },
+    ]),
+    /找不到 cc\.Animation 组件/
+  );
+  assert.equal(fs.readFileSync(tmp, 'utf8'), original);
+
+  editPrefab(tmp, [
+    { op: 'add-component', node: 'btnMerge', componentType: 'cc.Animation' },
+  ]);
+  const parsed = parsePrefab(tmp);
+  const target = parsed.findNodeByName('btnMerge');
+  const compId = target._components[target._components.length - 1].__id__;
+  const duplicated = JSON.parse(JSON.stringify(parsed.elements[compId]));
+  const duplicateId = parsed.elements.length;
+  parsed.elements.push(duplicated);
+  target._components.push({ __id__: duplicateId });
+  const { writePrefab } = require('../src/write.js');
+  writePrefab(tmp, parsed.elements, parsed.raw);
+
+  const beforeDuplicateReplace = fs.readFileSync(tmp, 'utf8');
+  assert.throws(
+    () => editPrefab(tmp, [
+      { op: 'replace-component', node: 'btnMerge', componentType: 'cc.Animation' },
+    ]),
+    /有 2 个 cc\.Animation 组件/
+  );
+  assert.equal(fs.readFileSync(tmp, 'utf8'), beforeDuplicateReplace);
+});
+
+test('replace-component: props 不允许覆盖组件核心关系字段', () => {
+  const tmp = cloneFixture('replacecomp-reserved-props');
+  tmpFiles.push(tmp);
+  editPrefab(tmp, [
+    { op: 'add-component', node: 'btnMerge', componentType: 'cc.Animation' },
+  ]);
+
+  const before = fs.readFileSync(tmp, 'utf8');
+  assert.throws(
+    () => editPrefab(tmp, [
+      {
+        op: 'replace-component',
+        node: 'btnMerge',
+        componentType: 'cc.Animation',
+        props: { node: { __id__: 999 } },
+      },
+    ]),
+    /不允许覆盖保留字段 "node"/
+  );
+  assert.equal(fs.readFileSync(tmp, 'utf8'), before);
+});
+
 // ─── set-component-ref ───────────────────────────────────────
 
 test('set-component-ref: 字段指向另一节点 (cc.Node)', () => {
