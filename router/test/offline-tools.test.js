@@ -26,14 +26,12 @@ const {
 } = require('../src/offline-tools.js');
 
 // fixture: HomeUI.prefab（只读，在 cli/test/fixtures/）
-const FIXTURE_PATH = path.resolve(
-    __dirname,
-    '../../cli/test/fixtures/HomeUI.prefab'
-);
+const fixture = require('../../cli/test/fixture.js');
+const FIXTURE_PATH = fixture.ensureHomeUiFixture();
 
 // 复制 fixture 到 tmp 用于写操作
 function makeTmp(tag) {
-    var dst = path.join(os.tmpdir(), 'HomeUI-router-' + tag + '-' + Date.now() + '.prefab');
+    var dst = path.join(fixture.FIXTURE_TEMP_DIR, 'HomeUI-router-' + tag + '-' + process.pid + '-' + Date.now() + '.prefab');
     fs.copyFileSync(FIXTURE_PATH, dst);
     return dst;
 }
@@ -52,7 +50,7 @@ test('isOfflineTool 对已知 name 返回 true，未知 name 返回 false', () =
     assert.equal(isOfflineTool('prefab_query'), true);
     assert.equal(isOfflineTool('prefab_edit'), true);
     assert.equal(isOfflineTool('prefab_batch'), true);
-    assert.equal(isOfflineTool('router_list_editors'), false);
+    assert.equal(isOfflineTool('gateway_list_editors'), false);
     assert.equal(isOfflineTool('scene_set_property'), false);
     assert.equal(isOfflineTool(''), false);
 });
@@ -64,6 +62,14 @@ test('每个 offline tool description 包含 "[offline]" 标注', () => {
             'tool ' + t.name + ' description 应包含 "[offline]"'
         );
     }
+});
+
+test('prefab_edit description 暴露删除与平替组件能力', () => {
+    var editTool = OFFLINE_TOOLS.find(function (t) { return t.name === 'prefab_edit'; });
+    assert.ok(editTool);
+    assert.match(editTool.description, /remove-component/);
+    assert.match(editTool.description, /replace-component/);
+    assert.match(editTool.description, /refreshFileId/);
 });
 
 // ── requireAbsolutePath ────────────────────────────────────────
@@ -147,6 +153,40 @@ test('prefab_edit set-active 成功，返回 changed=true + opsApplied=1', async
         assert.equal(data.changed, true, 'changed 应为 true');
         assert.equal(data.opsApplied, 1, 'opsApplied 应为 1');
         assert.ok(Array.isArray(data.nodesAffected), 'nodesAffected 应是数组');
+    } finally {
+        try { fs.unlinkSync(tmp); } catch (_) {}
+    }
+});
+
+test('prefab_edit 可删除并平替普通节点组件', async () => {
+    var tmp = makeTmp('component-ops');
+    try {
+        var result = await handleOfflineToolCall('prefab_edit', {
+            filePath: tmp,
+            ops: [
+                { op: 'add-component', node: 'btnMerge', componentType: 'cc.Animation' },
+                {
+                    op: 'replace-component',
+                    node: 'btnMerge',
+                    componentType: 'cc.Animation',
+                    replacementType: 'cc.Button',
+                    preserveProperties: false,
+                },
+                { op: 'remove-component', node: 'btnMerge', componentType: 'cc.Button' },
+            ],
+        });
+
+        var data = JSON.parse(result.content[0].text);
+        assert.equal(data.opsApplied, 3);
+
+        var cli = require('../../cli/src/index.js');
+        var parsed = cli.parsePrefab(tmp);
+        var node = parsed.findNodeByName('btnMerge');
+        var types = node._components.map(function (ref) {
+            return parsed.elements[ref.__id__].__type__;
+        });
+        assert.equal(types.includes('cc.Animation'), false);
+        assert.equal(types.includes('cc.Button'), false);
     } finally {
         try { fs.unlinkSync(tmp); } catch (_) {}
     }

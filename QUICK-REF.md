@@ -77,6 +77,7 @@ node extensions/cc-3-8-x-mcp/cli/bin/cocos-mcp-cli.js <command>
 | 复制节点 | `clone-node` |
 | 加组件 | `add-component` |
 | 删组件（普通节点） | `remove-component`（stub 不支持，用 `set-component-enabled` 禁用） |
+| 平替组件（普通节点） | `replace-component`（原位保留 `__id__`、组件顺序和引用；`replacementType` 可换类型，`refreshFileId=true` 模拟删旧再挂新） |
 | **新建 .ts / .json 后让 cli 当场可识别** | `ensure-meta`（path 相对项目根或绝对路径，建 v4 uuid meta）。**新建脚本必须用**——不然 add-component 会因 cli 查不到 .meta 抛错。同 batch 内放在 `add-component` 前 |
 | 给脚本 @property 挂节点引用 | `set-component-ref`（refType=`cc.Node`） |
 | 给脚本 @property 挂组件引用 | `set-component-ref`（refType=`cc.Button` 等） |

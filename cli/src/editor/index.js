@@ -32,6 +32,7 @@ const { execRemoveNode } = require('./ops/remove-node.js');
 const { execCloneNode } = require('./ops/clone-node.js');
 const { execAddComponent } = require('./ops/add-component.js');
 const { execRemoveComponent } = require('./ops/remove-component.js');
+const { execReplaceComponent } = require('./ops/replace-component.js');
 const { execSetComponentRef } = require('./ops/set-component-ref.js');
 const { execSetNestedComponentField } = require('./ops/set-nested-component-field.js');
 const { execBulkSet } = require('./ops/bulk-set.js');
@@ -69,6 +70,7 @@ const OP_HANDLERS = {
   'clone-node': execCloneNode,
   'add-component': execAddComponent,
   'remove-component': execRemoveComponent,
+  'replace-component': execReplaceComponent,
   'set-component-ref': execSetComponentRef,
   'set-nested-component-field': execSetNestedComponentField,
   'bulk-set': execBulkSet,

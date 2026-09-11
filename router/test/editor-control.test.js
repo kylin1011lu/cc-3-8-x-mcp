@@ -141,11 +141,15 @@ const {
     assertNoDebugSession,
 } = require('../src/editor-control.js');
 
-test('resolvePreviewPort reads dev-reload-info.json, falls back to 7456', () => {
+test('resolvePreviewPort reads temp, ignores legacy .dev, falls back to 7456', () => {
     const dir = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'cc-mcp-preview-'));
+    fs.mkdirSync(pathMod.join(dir, 'temp'));
+    fs.writeFileSync(pathMod.join(dir, 'temp', 'dev-reload-info.json'), JSON.stringify({ previewPort: 7458 }));
     fs.mkdirSync(pathMod.join(dir, '.dev'));
-    fs.writeFileSync(pathMod.join(dir, '.dev', 'dev-reload-info.json'), JSON.stringify({ previewPort: 7458 }));
+    fs.writeFileSync(pathMod.join(dir, '.dev', 'dev-reload-info.json'), JSON.stringify({ previewPort: 7459 }));
     assert.equal(resolvePreviewPort(dir), 7458);
+    fs.unlinkSync(pathMod.join(dir, 'temp', 'dev-reload-info.json'));
+    assert.equal(resolvePreviewPort(dir), 7456);
     assert.equal(resolvePreviewPort('/no/such/project'), 7456);
     fs.rmSync(dir, { recursive: true, force: true });
 });
@@ -174,8 +178,8 @@ test('assertNoDebugSession throws on active connections unless forced', async ()
     const srv = net.createServer(() => {});
     await new Promise((r) => srv.listen(0, '127.0.0.1', r));
     const port = srv.address().port;
-    fs.mkdirSync(pathMod.join(dir, '.dev'));
-    fs.writeFileSync(pathMod.join(dir, '.dev', 'dev-reload-info.json'), JSON.stringify({ previewPort: port }));
+    fs.mkdirSync(pathMod.join(dir, 'temp'));
+    fs.writeFileSync(pathMod.join(dir, 'temp', 'dev-reload-info.json'), JSON.stringify({ previewPort: port }));
     const client = net.connect(port, '127.0.0.1');
     await new Promise((r) => client.on('connect', r));
 

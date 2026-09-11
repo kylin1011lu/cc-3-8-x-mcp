@@ -9,14 +9,14 @@ const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
+const fixture = require('./fixture.js');
 
 const { parsePrefab } = require('../src/parse.js');
 const { writePrefab, detectIndent, detectTrailingNewline } = require('../src/write.js');
 const { setOverrideProperty, listOverrides } = require('../src/overrides.js');
 
-const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/HomeUI.prefab');
-const TMP_PATH = path.join(os.tmpdir(), `HomeUI-smoke-${Date.now()}.prefab`);
+const FIXTURE_PATH = fixture.ensureHomeUiFixture();
+const TMP_PATH = path.join(fixture.FIXTURE_TEMP_DIR, `HomeUI-smoke-${process.pid}-${Date.now()}.prefab`);
 
 // 清理临时文件
 after(() => {
@@ -140,6 +140,7 @@ test('端到端: 改普通节点 _lpos.x + 写回 + 验证', () => {
 
 test('端到端: 更新 stub 节点已有 override (_lpos) + 写回 + 验证', () => {
   const prefabData = parsePrefab(FIXTURE_PATH);
+  prefabData.resolverStartPath = FIXTURE_PATH;
 
   // stub 节点 index 10（PrefabInfo index 11, fileId='as0LdMaKxSWSLxrZB9u9KA'）
   // 已有 _lpos override: {x: -272, y: 53, z: 0}
@@ -166,6 +167,7 @@ test('端到端: 更新 stub 节点已有 override (_lpos) + 写回 + 验证', (
 
 test('端到端: 新增 stub 节点 override (不存在的属性) + 写回 + 验证', () => {
   const prefabData = parsePrefab(FIXTURE_PATH);
+  prefabData.resolverStartPath = FIXTURE_PATH;
 
   const STUB_ID = 10;
   const overridesBefore = listOverrides(prefabData, STUB_ID);
@@ -218,4 +220,3 @@ test('JSON diff 精确：只有目标字段变化', () => {
   const origParsed = parsePrefab(FIXTURE_PATH);
   assert.equal(reparsed.elements.length, origParsed.elements.length, 'element 总数应不变');
 });
-
